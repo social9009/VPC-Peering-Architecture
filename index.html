@@ -1,1 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AWS VPC Peering | Cyber‑Animated Traffic Flow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            background: radial-gradient(circle at 10% 20%, #0a0f1e, #03060c);
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        /* glassmorphic card */
+        .card {
+            max-width: 1300px;
+            width: 100%;
+            background: rgba(12, 20, 35, 0.65);
+            backdrop-filter: blur(8px);
+            border-radius: 3rem;
+            border: 1px solid rgba(0, 255, 255, 0.25);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 255, 255, 0.3);
+            padding: 1.8rem 2rem 2rem 2rem;
+            transition: all 0.3s;
+        }
+
+        /* header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 1.2rem;
+        }
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #aaffff, #6a5acd, #ff66cc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 8px rgba(0,255,255,0.3);
+            letter-spacing: -0.5px;
+        }
+        .badge {
+            background: linear-gradient(145deg, #1e2a3a, #0f172a);
+            padding: 6px 14px;
+            border-radius: 60px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #7ee0ff;
+            border: 1px solid #2dd4bf;
+            box-shadow: 0 0 6px cyan;
+        }
+        hr {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, cyan, #ff66cc, transparent);
+            margin: 16px 0 24px;
+        }
+
+        /* diagram container */
+        .diagram-container {
+            overflow-x: auto;
+            margin: 0 -0.5rem;
+            border-radius: 2rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            box-shadow: inset 0 0 20px rgba(0,255,255,0.1), 0 10px 20px rgba(0,0,0,0.3);
+        }
+        svg {
+            display: block;
+            width: 100%;
+            min-width: 880px;
+            height: auto;
+            font-family: 'Segoe UI', monospace;
+        }
+
+        /* buttons */
+        .controls {
+            margin-top: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        .step-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .step-btn {
+            background: linear-gradient(145deg, #111827, #0b0f1a);
+            border: 1px solid #2dd4bf;
+            border-radius: 60px;
+            padding: 8px 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            color: #cbd5e6;
+            letter-spacing: 0.3px;
+            backdrop-filter: blur(4px);
+        }
+        .step-btn.active {
+            background: linear-gradient(115deg, #0e3a5c, #1f6e8c);
+            color: white;
+            border-color: #00ffff;
+            box-shadow: 0 0 12px cyan;
+            text-shadow: 0 0 3px white;
+        }
+        .step-btn:hover {
+            transform: translateY(-2px);
+            border-color: #ff66cc;
+            box-shadow: 0 0 12px #ff66cc;
+        }
+        .reset-btn {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #ff66cc;
+            border-radius: 60px;
+            padding: 8px 28px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #ffb3e6;
+            transition: 0.2s;
+        }
+        .reset-btn:hover {
+            background: #ff66cc20;
+            box-shadow: 0 0 12px #ff66cc;
+            transform: scale(0.97);
+        }
+
+        /* status panel neon */
+        .status-panel {
+            margin-top: 24px;
+            border-radius: 28px;
+            padding: 16px 22px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            border-left: 6px solid;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .status-panel.ok { border-left-color: #2ecc71; background: linear-gradient(120deg, #0a2f1f20, #00000050); color: #b0ffc0; text-shadow: 0 0 2px #2ecc71; }
+        .status-panel.err { border-left-color: #e74c3c; background: linear-gradient(120deg, #3a121220, #00000050); color: #ffb3a3; }
+        .status-panel.tip { border-left-color: #f1c40f; background: linear-gradient(120deg, #2c2a1520, #00000050); color: #fff0b5; }
+        .status-text {
+            font-size: 1rem;
+            line-height: 1.5;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        footer {
+            margin-top: 28px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #7f8c8d;
+            opacity: 0.8;
+        }
+
+        @keyframes pulseGlow {
+            0% { filter: drop-shadow(0 0 2px cyan); opacity: 0.7; }
+            100% { filter: drop-shadow(0 0 14px cyan); opacity: 1; }
+        }
+        @keyframes dashMove {
+            to { stroke-dashoffset: -24; }
+        }
+        .animated-path {
+            stroke-dasharray: 6 8;
+            animation: dashMove 0.9s linear infinite;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="header">
+        <h1>⚡ VPC PEERING • MUMBAI ⇄ N.VIRGINIA</h1>
+        <div class="badge">✨ interactive cyber flow</div>
+    </div>
+    <hr>
+    <div class="diagram-container">
+        <svg id="vsvg" viewBox="0 0 880 550" style="background: radial-gradient(circle at 30% 40%, #0a1022, #010003);">
+            <defs>
+                <linearGradient id="gradVpc" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#1e3b5c" stop-opacity="0.5"/>
+                    <stop offset="100%" stop-color="#0f1a2f" stop-opacity="0.8"/>
+                </linearGradient>
+                <linearGradient id="gradEc2" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#2a4d6e"/>
+                    <stop offset="100%" stop-color="#102b3f"/>
+                </linearGradient>
+                <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+                    <feMerge>
+                        <feMergeNode in="offsetblur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+                <filter id="glowCyan">
+                    <feGaussianBlur stdDeviation="3" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <marker id="arrowCyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+                    <path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="#0ff" stroke-width="1.5"/>
+                </marker>
+            </defs>
+
+            <!-- background grid effect -->
+            <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#1f3a5f" stroke-width="0.3" opacity="0.4"/>
+            </pattern>
+            <rect width="100%" height="100%" fill="url(#grid)"/>
+
+            <!-- region split glow -->
+            <line x1="420" y1="70" x2="420" y2="510" stroke="#0ff" stroke-width="0.8" stroke-dasharray="8 6" opacity="0.6"/>
+            <text x="430" y="40" fill="#2dd4bf" font-size="9" font-weight="bold">⚡ INTER‑REGION PEERING ⚡</text>
+
+            <!-- internet & igw -->
+            <circle cx="200" cy="45" r="24" fill="none" stroke="#0ff" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <ellipse cx="200" cy="45" rx="10" ry="24" fill="none" stroke="#0ff" stroke-width="1"/>
+            <text x="200" y="85" text-anchor="middle" fill="#aaffdd" font-size="9">INTERNET</text>
+            <line x1="200" y1="69" x2="200" y2="92" stroke="#0ff" stroke-width="1.2" marker-end="url(#arrowCyan)"/>
+
+            <g id="igw-group">
+                <rect x="164" y="92" width="72" height="32" rx="10" fill="#0a1a2a" stroke="#0ff" stroke-width="1.2"/>
+                <text x="200" y="110" text-anchor="middle" fill="#0ff" font-weight="bold" font-size="12">IGW</text>
+                <text x="200" y="122" text-anchor="middle" fill="#9ad" font-size="8">Internet GW</text>
+            </g>
+
+            <!-- VPC-A -->
+            <g>
+                <rect x="28" y="140" width="370" height="380" rx="20" fill="url(#gradVpc)" stroke="#28e1ff" stroke-width="1.2"/>
+                <text x="44" y="164" fill="#ffffff" font-weight="700" font-size="13">VPC-A · MUMBAI (ap-south-1)</text>
+                <text x="44" y="182" fill="#aaccff" font-size="10">CIDR 10.100.0.0/16</text>
+            </g>
+            <!-- public subnet -->
+            <rect x="44" y="200" width="340" height="110" rx="12" fill="#10354b" stroke="#2dd4bf" stroke-width="0.8" fill-opacity="0.6"/>
+            <text x="54" y="222" fill="#bff" font-weight="bold" font-size="11">🔓 Public subnet</text>
+            <text x="368" y="222" text-anchor="end" fill="#9bbdff" font-size="9">10.100.0.0/24</text>
+
+            <!-- EC2-A -->
+            <g id="ec2a">
+                <rect x="125" y="240" width="150" height="62" rx="10" fill="url(#gradEc2)" stroke="#0ff" stroke-width="1.2" filter="url(#neonGlow)"/>
+                <text x="200" y="260" text-anchor="middle" fill="#eef" font-weight="bold" font-size="12">EC2-A (BASTION)</text>
+                <text x="200" y="278" text-anchor="middle" fill="#bbffdd" font-size="9">Public + Private IP</text>
+                <text x="200" y="293" text-anchor="middle" fill="#bbf" font-size="8">SSH from your PC</text>
+            </g>
+
+            <!-- private subnet VPC-A -->
+            <rect x="44" y="325" width="340" height="130" rx="12" fill="#0f2a3a" stroke="#f76" stroke-width="0.8" fill-opacity="0.6"/>
+            <text x="54" y="348" fill="#fb9" font-weight="bold" font-size="11">🔒 Private subnet</text>
+            <text x="368" y="348" text-anchor="end" fill="#9bbdff" font-size="9">10.100.11.0/24</text>
+            <!-- EC2-B -->
+            <g id="ec2b">
+                <rect x="125" y="365" width="150" height="62" rx="10" fill="url(#gradEc2)" stroke="#f76" stroke-width="1"/>
+                <text x="200" y="385" text-anchor="middle" fill="#eef" font-weight="bold" font-size="12">EC2-B</text>
+                <text x="200" y="403" text-anchor="middle" fill="#bbffdd" font-size="9">Private IP only</text>
+                <text x="200" y="418" text-anchor="middle" fill="#bbf" font-size="8">10.100.11.x</text>
+            </g>
+
+            <!-- VPC-B (N.Virginia) -->
+            <g>
+                <rect x="480" y="140" width="370" height="380" rx="20" fill="url(#gradVpc)" stroke="#d966ff" stroke-width="1.2"/>
+                <text x="496" y="164" fill="#ffffff" font-weight="700" font-size="13">VPC-B · N.VIRGINIA (us-east-1)</text>
+                <text x="496" y="182" fill="#d0baff" font-size="10">CIDR 10.200.0.0/16</text>
+            </g>
+            <!-- private subnet VPC-B -->
+            <rect x="496" y="310" width="340" height="130" rx="12" fill="#1e2a3a" stroke="#a5f" stroke-width="0.8" fill-opacity="0.6"/>
+            <text x="506" y="333" fill="#e9c" font-weight="bold" font-size="11">🔒 Private subnet</text>
+            <text x="820" y="333" text-anchor="end" fill="#cbb5ff" font-size="9">10.200.11.0/24</text>
+            <!-- EC2-C -->
+            <g id="ec2c">
+                <rect x="575" y="350" width="150" height="62" rx="10" fill="url(#gradEc2)" stroke="#a5f" stroke-width="1"/>
+                <text x="650" y="370" text-anchor="middle" fill="#eef" font-weight="bold" font-size="12">EC2-C</text>
+                <text x="650" y="388" text-anchor="middle" fill="#bbffdd" font-size="9">Private IP only</text>
+                <text x="650" y="403" text-anchor="middle" fill="#bbf" font-size="8">10.200.11.x</text>
+            </g>
+
+            <!-- Peering portal (center) -->
+            <g id="peering-group">
+                <circle cx="440" cy="420" r="40" fill="#0f172a" stroke="#0ff" stroke-width="2" stroke-dasharray="8 6" filter="url(#glowCyan)"/>
+                <text x="440" y="413" text-anchor="middle" fill="#0ff" font-weight="bold" font-size="11">VPC</text>
+                <text x="440" y="430" text-anchor="middle" fill="#0ff" font-weight="bold" font-size="11">PEERING</text>
+                <circle cx="440" cy="420" r="46" fill="none" stroke="#ff66cc" stroke-width="0.8" stroke-dasharray="2 5" opacity="0.6"/>
+            </g>
+
+            <!-- route table badges -->
+            <g id="rt-a-badge" opacity="0">
+                <rect x="48" y="460" width="320" height="42" rx="10" fill="#0f1e2c" stroke="#0ff" stroke-width="0.8"/>
+                <text x="60" y="476" fill="#0ff" font-size="9" font-weight="bold">✈️ VPC-A Private RT</text>
+                <text x="60" y="492" fill="#7ce" font-size="8">10.200.0.0/16 → peering (pcx-xxxx)</text>
+            </g>
+            <g id="rt-b-badge" opacity="0">
+                <rect x="492" y="460" width="330" height="42" rx="10" fill="#231b36" stroke="#d966ff" stroke-width="0.8"/>
+                <text x="504" y="476" fill="#d966ff" font-size="9" font-weight="bold">✈️ VPC-B Private RT</text>
+                <text x="504" y="492" fill="#ccaaff" font-size="8">10.100.0.0/16 → peering (pcx-xxxx)</text>
+            </g>
+
+            <!-- animated connection paths -->
+            <path id="flow-pub" d="M200,240 L200,302" fill="none" stroke="#0ff" stroke-width="1.5" opacity="0.6"/>
+            <path id="flow-b2b" d="M200,365 L200,420 L300,420 L380,420" fill="none" stroke="#0ff" stroke-width="1.5" opacity="0.6"/>
+            <path id="flow-fail" d="M280,420 L380,420" fill="none" stroke="#f66" stroke-width="1.5" stroke-dasharray="5 5" opacity="0.5"/>
+            <path id="flow-peered" d="M280,420 L340,420 L440,420 L540,420 L650,420" fill="none" stroke="#1eff9c" stroke-width="2" opacity="0.8"/>
+            <path id="flow-back" d="M650,420 L540,420 L440,420 L340,420 L200,420" fill="none" stroke="#1eff9c" stroke-width="2" opacity="0.6"/>
+        </svg>
+    </div>
+
+    <div class="controls">
+        <div class="step-buttons" id="step-buttons"></div>
+        <button class="reset-btn" id="reset-animation">⟳ RESTART VISUALS</button>
+    </div>
+    <div class="status-panel ok" id="statusPanel">
+        <div class="status-text" id="statusMsg">✨ Step 1 — SSH into EC2-A (bastion) from your laptop.</div>
+    </div>
+    <footer>💡 CLICK STEPS → neon packets show real traffic flow. Peering + route tables turn red X into green check.</footer>
+</div>
+
+<script>
+    (function(){
+        let activeStep = 0;
+        let animationFrame = null;
+        const svg = document.getElementById('vsvg');
+        const rtABadge = document.getElementById('rt-a-badge');
+        const rtBBadge = document.getElementById('rt-b-badge');
+        const peeringGroup = document.getElementById('peering-group');
+
+        const stepsData = [
+            { name: "① SSH → EC2-A", msg: "✅ STEP 1 — SSH into EC2‑A (public IP). Traffic flows from Internet → IGW → EC2‑A. Works because EC2‑A has public IP & SG allows SSH.", type: "ok", flowType: "pub" },
+            { name: "② EC2-A → EC2-B", msg: "✅ STEP 2 — From EC2‑A, SSH into EC2‑B (10.100.11.x). Same VPC routing, works automatically. (Use SSH agent forwarding).", type: "ok", flowType: "b2b" },
+            { name: "③ Ping EC2-C (fails)", msg: "❌ STEP 3 — From EC2‑B, ping EC2‑C -> BLOCKED! No route to 10.200.0.0/16, peering not active.", type: "err", flowType: "fail" },
+            { name: "④ Create Peering + Routes", msg: "🔧 STEP 4 — Create VPC Peering (Mumbai → N.Virginia) & accept. Then add routes in both private route tables: remote CIDR → peering connection.", type: "tip", flowType: "activate" },
+            { name: "⑤ Ping EC2-C (works!)", msg: "✅ STEP 5 — ping EC2-C success! Packets flow both ways through peering. Bidirectional private communication established.", type: "ok", flowType: "peered" }
+        ];
+
+        function resetVisuals() {
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            if (rtABadge) rtABadge.setAttribute('opacity', '0');
+            if (rtBBadge) rtBBadge.setAttribute('opacity', '0');
+            if (peeringGroup) peeringGroup.style.filter = '';
+            document.querySelectorAll('.packet-anim').forEach(p => p.remove());
+            document.querySelectorAll('.burst-particle').forEach(p => p.remove());
+        }
+
+        // create glowing packet with trail effect
+        function animatePacket(pathId, color, duration = 1100, repeat = false, onComplete = null) {
+            const path = document.getElementById(pathId);
+            if (!path) return;
+            const len = path.getTotalLength();
+            if (len === 0) return;
+            let active = true;
+            const start = performance.now();
+            const packet = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            packet.setAttribute("r", "7");
+            packet.setAttribute("fill", color);
+            packet.setAttribute("stroke", "white");
+            packet.setAttribute("stroke-width", "1.5");
+            packet.setAttribute("filter", "url(#glowCyan)");
+            packet.classList.add("packet-anim");
+            svg.appendChild(packet);
+            
+            function step(now) {
+                if (!active) return;
+                let t = Math.min(1, (now - start) / duration);
+                let pt = path.getPointAtLength(t * len);
+                packet.setAttribute("cx", pt.x);
+                packet.setAttribute("cy", pt.y);
+                if (t < 1) {
+                    animationFrame = requestAnimationFrame(step);
+                } else {
+                    if (repeat) {
+                        packet.remove();
+                        animatePacket(pathId, color, duration, true, onComplete);
+                    } else {
+                        packet.remove();
+                        if (onComplete) onComplete();
+                    }
+                }
+            }
+            animationFrame = requestAnimationFrame(step);
+            return () => { active = false; if(packet.parentNode) packet.remove(); };
+        }
+
+        function burstEffect(x, y, color) {
+            for(let i=0;i<12;i++){
+                let particle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                particle.setAttribute("cx", x);
+                particle.setAttribute("cy", y);
+                particle.setAttribute("r", "2");
+                particle.setAttribute("fill", color);
+                particle.classList.add("burst-particle");
+                svg.appendChild(particle);
+                let dx = (Math.random() - 0.5) * 20;
+                let dy = (Math.random() - 0.5) * 20;
+                let opacity = 1;
+                let id = setInterval(() => {
+                    let cx = parseFloat(particle.getAttribute("cx"));
+                    let cy = parseFloat(particle.getAttribute("cy"));
+                    particle.setAttribute("cx", cx + dx/5);
+                    particle.setAttribute("cy", cy + dy/5);
+                    opacity -= 0.12;
+                    particle.setAttribute("opacity", opacity);
+                    if(opacity <= 0){
+                        clearInterval(id);
+                        particle.remove();
+                    }
+                }, 30);
+                setTimeout(() => { if(particle) particle.remove(); }, 400);
+            }
+        }
+
+        function startFlow(flowType) {
+            resetVisuals();
+            if(flowType === "pub") {
+                animatePacket("flow-pub", "#2ecc71", 900, true);
+            } 
+            else if(flowType === "b2b") {
+                animatePacket("flow-b2b", "#00e6b8", 1100, true);
+            }
+            else if(flowType === "fail") {
+                let anim = animatePacket("flow-fail", "#e74c3c", 800, false, () => {
+                    burstEffect(380, 420, "#ff5555");
+                    let xmark = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    xmark.setAttribute("x", "370");
+                    xmark.setAttribute("y", "410");
+                    xmark.setAttribute("fill", "#ff6666");
+                    xmark.setAttribute("font-size", "24");
+                    xmark.setAttribute("font-weight", "bold");
+                    xmark.textContent = "✕";
+                    xmark.classList.add("packet-anim");
+                    svg.appendChild(xmark);
+                    setTimeout(() => xmark.remove(), 800);
+                });
+            }
+            else if(flowType === "activate") {
+                if(rtABadge) rtABadge.setAttribute('opacity', '1');
+                if(rtBBadge) rtBBadge.setAttribute('opacity', '1');
+                peeringGroup.style.filter = "url(#glowCyan)";
+                burstEffect(440, 420, "#0ff");
+                // animate route table slide glow
+                const ring = peeringGroup.querySelector('circle');
+                if(ring) ring.style.animation = "pulseGlow 0.9s ease-in-out 3";
+            }
+            else if(flowType === "peered") {
+                if(rtABadge) rtABadge.setAttribute('opacity', '1');
+                if(rtBBadge) rtBBadge.setAttribute('opacity', '1');
+                peeringGroup.style.filter = "url(#glowCyan)";
+                animatePacket("flow-peered", "#1eff9c", 1200, true);
+                setTimeout(() => {
+                    animatePacket("flow-back", "#1eff9c", 1200, true);
+                }, 700);
+                // success burst
+                setTimeout(() => burstEffect(650, 420, "#2ecc71"), 600);
+            }
+        }
+
+        function setStep(index) {
+            if(index < 0 || index >= stepsData.length) return;
+            activeStep = index;
+            document.querySelectorAll('.step-btn').forEach((btn,i) => {
+                if(i === index) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            const step = stepsData[index];
+            const panel = document.getElementById('statusPanel');
+            panel.className = `status-panel ${step.type}`;
+            document.getElementById('statusMsg').innerHTML = step.msg;
+            startFlow(step.flowType);
+        }
+
+        // build buttons
+        const container = document.getElementById('step-buttons');
+        stepsData.forEach((step, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `step-btn ${idx === 0 ? 'active' : ''}`;
+            btn.innerText = step.name;
+            btn.addEventListener('click', () => setStep(idx));
+            container.appendChild(btn);
+        });
+        document.getElementById('reset-animation').addEventListener('click', () => {
+            resetVisuals();
+            setStep(activeStep);
+        });
+        setStep(0);
+    })();
+</script>
+</body>
+</html>
